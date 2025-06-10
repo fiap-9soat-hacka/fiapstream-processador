@@ -53,10 +53,11 @@ public class ProcessadorService {
                 i++;
             }
 
-            fos.close();
             g.stop();
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            fos.close();
         }
     }
 }
