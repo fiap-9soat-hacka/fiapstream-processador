@@ -55,15 +55,6 @@ public class ProcessadorResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response uploadVideos(VideoUploadForm form) throws IOException, SAXException, TikaException, Exception {
-        for (InputStream video : form.files) {
-            AutoDetectParser parser = new AutoDetectParser();
-            BodyContentHandler handler = new BodyContentHandler();
-            Metadata metadata = new Metadata();
-
-            parser.parse(video, handler, metadata);
-            Log.info(metadata.get(Metadata.CONTENT_TYPE));
-        }
-
         File generatedFile = this.processadorService.processarVideo();
 
         return Response
