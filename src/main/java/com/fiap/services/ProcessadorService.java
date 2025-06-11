@@ -1,62 +1,130 @@
 package com.fiap.services;
 
-import java.awt.Image;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import net.bramp.ffmpeg.FFmpeg;
+import net.bramp.ffmpeg.FFmpegExecutor;
+import net.bramp.ffmpeg.FFmpegUtils;
+import net.bramp.ffmpeg.FFprobe;
+import net.bramp.ffmpeg.builder.FFmpegBuilder;
+import net.bramp.ffmpeg.job.FFmpegJob;
+import net.bramp.ffmpeg.probe.FFmpegProbeResult;
+import net.bramp.ffmpeg.progress.Progress;
+import net.bramp.ffmpeg.progress.ProgressListener;
+import org.bytedeco.javacv.FrameGrabber.Exception;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import javax.imageio.ImageIO;
-
-import org.bytedeco.javacv.FFmpegFrameGrabber;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.FrameGrabber.Exception;
-import org.bytedeco.javacv.Java2DFrameConverter;
-
-import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class ProcessadorService {
 
-    public void processarVideo() throws Exception, IOException {
-        FileOutputStream fos = new FileOutputStream(new File("outputs/video-frames.zip"));
-        // Quando for repassar o .zip, alterar o ZipOutputStream(fos) para o
-        // ZipOutputStream(os) para usar ByteArrayOutputStream
-        // Assim vc repassa os bytes e não salva o arquivo no disco
-        // colocar o "os" e o "zipOutputStream" fora
-        try (ZipOutputStream zipOutputStream = new ZipOutputStream(fos)) {
+    @Inject
+    public ProcessadorService() {
+    }
 
-            FFmpegFrameGrabber g = new FFmpegFrameGrabber("testevideo.mp4");
-            g.start();
+    public static void main(String[] args) {
+        try {
+            new ProcessadorService().processarVideo();
+        } catch (Exception | IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-            Java2DFrameConverter converter = new Java2DFrameConverter();
-            Frame frame;
-            Integer i = 0;
+    /**
+     * TODO: Fazer processamento com arquivo recebido do resource
+     * TODO: Mover esse código para sistema de filas
+     *
+     * @return
+     * @throws IOException
+     * @throws Exception
+     */
+    public File processarVideo() throws IOException, Exception {
+        final String fileNameWithExtension = "testevideo.mp4";
 
-            while ((frame = g.grabImage()) != null) {
-                BufferedImage bi = converter.convert(frame);
-                ByteArrayOutputStream os = new ByteArrayOutputStream();
-                // ZipOutputStream zipOutputStream2 = new ZipOutputStream(os);
-                ImageIO.write(bi, "jpeg", os);
+        // instalar ffmpeg e ffprobe:
+        // sudo apt install ffmpeg
+        FFmpeg ffmpeg = new FFmpeg();
+        FFprobe ffprobe = new FFprobe();
 
-                ZipEntry zipEntry = new ZipEntry("testevideo-" + i + ".png");
-                zipEntry.setSize(os.size());
-                zipOutputStream.putNextEntry(zipEntry);
-                zipOutputStream.write(os.toByteArray());
+        FFmpegProbeResult in = ffprobe.probe(fileNameWithExtension);
+        Path tmpdir = Files
+            .createTempDirectory("fiapstream-process-")
+            .toAbsolutePath();
+        String tmpdirPath = tmpdir.toString();
 
-                zipOutputStream.closeEntry();
+        System.out.printf("Processando video %s\n", fileNameWithExtension);
+        System.out.printf("Resultado do processamento temporariamente armazenado em %s\n", tmpdir);
 
-                i++;
+
+        FFmpegBuilder builder = new FFmpegBuilder()
+            .setInput(fileNameWithExtension)
+            .overrideOutputFiles(true)
+            .addOutput(tmpdirPath + File.separator + "out-%03d.jpg")
+            .done();
+
+        FFmpegExecutor executor = new FFmpegExecutor(ffmpeg, ffprobe);
+
+        FFmpegJob job = executor.createJob(builder, new ProgressListener() {
+
+            // Using the FFmpegProbeResult determine the duration of the input
+            final double duration_ns = in.getFormat().duration * TimeUnit.SECONDS.toNanos(1);
+
+            @Override
+            public void progress(Progress progress) {
+                double percentage = progress.out_time_ns / duration_ns;
+
+                // Print out interesting information about the progress
+                System.out.printf(
+                    "[%.0f%%] status:%s frame:%d time:%s ms fps:%.0f speed:%.2fx%n",
+                    percentage * 100,
+                    progress.status,
+                    progress.frame,
+                    FFmpegUtils.toTimecode(progress.out_time_ns, TimeUnit.NANOSECONDS),
+                    progress.fps.doubleValue(),
+                    progress.speed
+                );
+            }
+        });
+
+        job.run();
+
+        System.out.printf("Processamento finalizado para: %s", fileNameWithExtension);
+
+        return this.criarArquivoZipado(tmpdir);
+    }
+
+    public File criarArquivoZipado(Path jobResultDirectory) throws FileNotFoundException {
+        String targetZipFilename = jobResultDirectory.getFileName() + ".zip";
+        File targetFile = jobResultDirectory.toFile();
+
+        File targetZipFile = new File("outputs/" + targetZipFilename);
+        FileOutputStream fos = new FileOutputStream(targetZipFile);
+        try (ZipOutputStream zos = new ZipOutputStream(fos)) {
+            File[] targetFiles = targetFile.listFiles();
+            assert targetFiles != null;
+
+            for (File f : targetFiles) {
+                ZipEntry zipEntry = new ZipEntry(f.getName());
+                zos.putNextEntry(zipEntry);
+                FileInputStream fis = new FileInputStream(f);
+                byte[] buffer = new byte[1024];
+                int len;
+                while ((len = fis.read(buffer)) > 0) {
+                    zos.write(buffer, 0, len);
+                }
+                zos.closeEntry();
+                fis.close();
             }
 
-            fos.close();
-            g.stop();
-        } catch (IOException e) {
-            e.printStackTrace();
+        }catch (IOException e) {
+            throw new RuntimeException(e);
         }
+
+        return targetZipFile;
     }
 }

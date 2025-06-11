@@ -1,9 +1,12 @@
 package com.fiap.rest;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.List;
 
+import jakarta.ws.rs.core.Response;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
@@ -16,7 +19,6 @@ import org.xml.sax.SAXException;
 import com.fiap.services.ProcessadorService;
 
 import io.quarkus.logging.Log;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -36,12 +38,23 @@ public class ProcessadorResource {
     public static class VideoUploadForm {
         @RestForm("files")
         @PartType(MediaType.APPLICATION_OCTET_STREAM)
-        public List<InputStream> files;
+        public List<File> files;
+    }
+
+    @GET
+    public Response testDownload() throws IOException, Exception {
+        File generatedFile = this.processadorService.processarVideo();
+
+        return Response
+            .ok(Files.readAllBytes(generatedFile.toPath()))
+            .header("Content-Disposition", String.format("attachment; filename=\"%s\"", generatedFile.getName()))
+            .build();
     }
 
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public void uploadVideos(VideoUploadForm form) throws IOException, SAXException, TikaException, Exception {
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response uploadVideos(VideoUploadForm form) throws IOException, SAXException, TikaException, Exception {
         for (InputStream video : form.files) {
             AutoDetectParser parser = new AutoDetectParser();
             BodyContentHandler handler = new BodyContentHandler();
@@ -51,6 +64,11 @@ public class ProcessadorResource {
             Log.info(metadata.get(Metadata.CONTENT_TYPE));
         }
 
-        processadorService.processarVideo();
+        File generatedFile = this.processadorService.processarVideo();
+
+        return Response
+            .ok(Files.readAllBytes(generatedFile.toPath()))
+            .header("Content-Disposition", "attachment; filename=\"example.zip\"")
+            .build();
     }
 }
