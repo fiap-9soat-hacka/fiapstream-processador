@@ -14,6 +14,5 @@ import lombok.Setter;
 public class ResponseData {
     String key;
     String filename;
-    String webhook;
     EstadoProcessamento estado;
 }

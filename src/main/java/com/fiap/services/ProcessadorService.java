@@ -91,7 +91,6 @@ public class ProcessadorService {
         ResponseData responseData = new ResponseData(
                 videoData.uuid(),
                 videoData.filename(),
-                "TEMP", // Updated to use webhook URL from DTO
                 EstadoProcessamento.PROCESSANDO);
         sendResponse(responseData);
 
