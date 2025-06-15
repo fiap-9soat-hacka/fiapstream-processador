@@ -19,13 +19,19 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import org.apache.james.mime4j.util.MimeUtil;
 import org.apache.tika.Tika;
 import org.bytedeco.javacv.FrameGrabber.Exception;
+import org.eclipse.microprofile.reactive.messaging.Channel;
+import org.eclipse.microprofile.reactive.messaging.Emitter;
+import org.eclipse.microprofile.reactive.messaging.Outgoing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fiap.dto.ResponseData;
 import com.fiap.dto.VideoDataUUID;
+import com.fiap.enums.EstadoProcessamento;
 import com.fiap.rest.CommonResource;
 import com.fiap.utils.MimeUtils;
 
 import io.quarkus.logging.Log;
+import io.smallrye.common.annotation.Blocking;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -48,6 +54,9 @@ public class ProcessadorService {
     @Inject
     CommonResource commonResource;
 
+    @Channel("processador-responses")
+    Emitter<String> responseEmitter;
+
     // public static void main(String[] args) {
     // try {
     // new ProcessadorService().processarVideo();
@@ -64,6 +73,7 @@ public class ProcessadorService {
      * @throws IOException
      * @throws Exception
      */
+
     public void processarVideo(String request) throws IOException, Exception {
         ObjectMapper objectMapper = new ObjectMapper();
         VideoDataUUID videoData = objectMapper.readValue(request, VideoDataUUID.class);
@@ -76,6 +86,34 @@ public class ProcessadorService {
         Path tempFile = Files.createTempFile("video-", mimeType);
         Files.write(tempFile, objectBytes, StandardOpenOption.WRITE);
 
+        // Vídeo em processamento
+        ResponseData responseData = new ResponseData(
+                videoData.uuid(),
+                videoData.filename(),
+                "TEMP", // Updated to use webhook URL from DTO
+                EstadoProcessamento.PROCESSANDO);
+        sendResponse(responseData);
+
+        Path tmpdir = processarVideoEmImagens(tempFile);
+
+        Log.info("Processamento finalizado para: " + tempFile.getFileName());
+
+        File zipData = criarArquivoZipado(tmpdir);
+        PutObjectResponse putResponse = s3Client.putObject(
+                commonResource.buildPutRequest(videoData.uuid() + ".zip", "application/zip"),
+                RequestBody.fromFile(zipData));
+        if (putResponse == null) {
+            responseData.setEstado(EstadoProcessamento.ERRO);
+            sendResponse(responseData);
+            throw new WebApplicationException("Failed to upload file to S3");
+        }
+
+        responseData.setEstado(EstadoProcessamento.CONCLUIDO);
+        sendResponse(responseData);
+        Log.info("Zip salvo no S3");
+    }
+
+    private Path processarVideoEmImagens(Path tempFile) throws IOException {
         // instalar ffmpeg e ffprobe:
         // sudo apt install ffmpeg
         FFmpeg ffmpeg = new FFmpeg();
@@ -121,20 +159,23 @@ public class ProcessadorService {
 
         job.run();
 
-        Log.info("Processamento finalizado para: " + tempFile.getFileName());
-
-        File zipData = criarArquivoZipado(tmpdir);
-        PutObjectResponse putResponse = s3Client.putObject(
-                commonResource.buildPutRequest(videoData.uuid() + ".zip", "application/zip"),
-                RequestBody.fromFile(zipData));
-        if (putResponse == null) {
-            throw new WebApplicationException("Failed to upload file to S3");
-        }
-
-        Log.info("Zip salvo");
+        return tmpdir;
     }
 
-    public File criarArquivoZipado(Path jobResultDirectory) throws IOException {
+    private void sendResponse(ResponseData responseData) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String responseJson;
+        try {
+            responseJson = objectMapper.writeValueAsString(responseData);
+        } catch (IOException e) {
+            Log.error("Error converting response data to JSON", e);
+            throw new WebApplicationException("Failed to convert response data to JSON", e);
+        }
+        Log.info("Enviando resposta: " + responseJson);
+        responseEmitter.send(responseJson);
+    }
+
+    private File criarArquivoZipado(Path jobResultDirectory) throws IOException {
         File targetFile = jobResultDirectory.toFile();
         File zipFile = Files.createTempFile("processed-", ".zip").toFile(); // Create a temporary file for the zip
 
