@@ -75,6 +75,7 @@ public class ProcessadorService {
      */
 
     public void processarVideo(String request) throws IOException, Exception {
+        // Pegando arquivo salvo no s3
         ObjectMapper objectMapper = new ObjectMapper();
         VideoDataUUID videoData = objectMapper.readValue(request, VideoDataUUID.class);
         byte[] objectBytes = s3Client.getObjectAsBytes(commonResource.buildGetRequest(videoData.uuid()))
@@ -98,6 +99,7 @@ public class ProcessadorService {
 
         Log.info("Processamento finalizado para: " + tempFile.getFileName());
 
+        // Zipando arquivos e enviando para o S3
         File zipData = criarArquivoZipado(tmpdir);
         PutObjectResponse putResponse = s3Client.putObject(
                 commonResource.buildPutRequest(videoData.uuid() + ".zip", "application/zip"),
@@ -172,7 +174,7 @@ public class ProcessadorService {
             throw new WebApplicationException("Failed to convert response data to JSON", e);
         }
         Log.info("Enviando resposta: " + responseJson);
-        responseEmitter.send(responseJson);
+        responseEmitter.send(responseJson); // Return the JSON string for further processing
     }
 
     private File criarArquivoZipado(Path jobResultDirectory) throws IOException {
