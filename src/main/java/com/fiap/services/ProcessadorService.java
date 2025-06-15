@@ -2,6 +2,7 @@ package com.fiap.services;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFmpegExecutor;
 import net.bramp.ffmpeg.FFmpegUtils;
@@ -11,11 +12,25 @@ import net.bramp.ffmpeg.job.FFmpegJob;
 import net.bramp.ffmpeg.probe.FFmpegProbeResult;
 import net.bramp.ffmpeg.progress.Progress;
 import net.bramp.ffmpeg.progress.ProgressListener;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+
+import org.apache.james.mime4j.util.MimeUtil;
+import org.apache.tika.Tika;
 import org.bytedeco.javacv.FrameGrabber.Exception;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fiap.dto.VideoDataUUID;
+import com.fiap.rest.CommonResource;
+import com.fiap.utils.MimeUtils;
+
+import io.quarkus.logging.Log;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -27,13 +42,19 @@ public class ProcessadorService {
     public ProcessadorService() {
     }
 
-    public static void main(String[] args) {
-        try {
-            new ProcessadorService().processarVideo();
-        } catch (Exception | IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    @Inject
+    S3Client s3Client;
+
+    @Inject
+    CommonResource commonResource;
+
+    // public static void main(String[] args) {
+    // try {
+    // new ProcessadorService().processarVideo();
+    // } catch (Exception | IOException e) {
+    // throw new RuntimeException(e);
+    // }
+    // }
 
     /**
      * TODO: Fazer processamento com arquivo recebido do resource
@@ -43,29 +64,37 @@ public class ProcessadorService {
      * @throws IOException
      * @throws Exception
      */
-    public File processarVideo() throws IOException, Exception {
-        final String fileNameWithExtension = "testevideo.mp4";
+    public void processarVideo(String request) throws IOException, Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        VideoDataUUID videoData = objectMapper.readValue(request, VideoDataUUID.class);
+        byte[] objectBytes = s3Client.getObjectAsBytes(commonResource.buildGetRequest(videoData.uuid()))
+                .asByteArray();
+
+        Tika tika = new Tika();
+        String mimeType = tika.detect(objectBytes);
+        mimeType = MimeUtils.getExtensionFromMimeType(mimeType);
+        Path tempFile = Files.createTempFile("video-", mimeType);
+        Files.write(tempFile, objectBytes, StandardOpenOption.WRITE);
 
         // instalar ffmpeg e ffprobe:
         // sudo apt install ffmpeg
         FFmpeg ffmpeg = new FFmpeg();
         FFprobe ffprobe = new FFprobe();
 
-        FFmpegProbeResult in = ffprobe.probe(fileNameWithExtension);
+        FFmpegProbeResult in = ffprobe.probe(tempFile.toString());
         Path tmpdir = Files
-            .createTempDirectory("fiapstream-process-")
-            .toAbsolutePath();
+                .createTempDirectory("fiapstream-process-")
+                .toAbsolutePath();
         String tmpdirPath = tmpdir.toString();
 
-        System.out.printf("Processando video %s\n", fileNameWithExtension);
-        System.out.printf("Resultado do processamento temporariamente armazenado em %s\n", tmpdir);
-
+        Log.info("Processando video " + tempFile.getFileName());
+        Log.info("Resultado do processamento temporariamente armazenado em " + tmpdir);
 
         FFmpegBuilder builder = new FFmpegBuilder()
-            .setInput(fileNameWithExtension)
-            .overrideOutputFiles(true)
-            .addOutput(tmpdirPath + File.separator + "out-%03d.jpg")
-            .done();
+                .setInput(tempFile.toString())
+                .overrideOutputFiles(true)
+                .addOutput(tmpdirPath + File.separator + "out-%03d.jpg")
+                .done();
 
         FFmpegExecutor executor = new FFmpegExecutor(ffmpeg, ffprobe);
 
@@ -79,52 +108,59 @@ public class ProcessadorService {
                 double percentage = progress.out_time_ns / duration_ns;
 
                 // Print out interesting information about the progress
-                System.out.printf(
-                    "[%.0f%%] status:%s frame:%d time:%s ms fps:%.0f speed:%.2fx%n",
-                    percentage * 100,
-                    progress.status,
-                    progress.frame,
-                    FFmpegUtils.toTimecode(progress.out_time_ns, TimeUnit.NANOSECONDS),
-                    progress.fps.doubleValue(),
-                    progress.speed
-                );
+                Log.info(String.format(
+                        "[%.0f%%] status:%s frame:%d time:%s ms fps:%.0f speed:%.2fx",
+                        percentage * 100,
+                        progress.status,
+                        progress.frame,
+                        FFmpegUtils.toTimecode(progress.out_time_ns, TimeUnit.NANOSECONDS),
+                        progress.fps.doubleValue(),
+                        progress.speed));
             }
         });
 
         job.run();
 
-        System.out.printf("Processamento finalizado para: %s", fileNameWithExtension);
+        Log.info("Processamento finalizado para: " + tempFile.getFileName());
 
-        return this.criarArquivoZipado(tmpdir);
+        File zipData = criarArquivoZipado(tmpdir);
+        PutObjectResponse putResponse = s3Client.putObject(
+                commonResource.buildPutRequest(videoData.uuid() + ".zip", "application/zip"),
+                RequestBody.fromFile(zipData));
+        if (putResponse == null) {
+            throw new WebApplicationException("Failed to upload file to S3");
+        }
+
+        Log.info("Zip salvo");
     }
 
-    public File criarArquivoZipado(Path jobResultDirectory) throws FileNotFoundException {
-        String targetZipFilename = jobResultDirectory.getFileName() + ".zip";
+    public File criarArquivoZipado(Path jobResultDirectory) throws IOException {
         File targetFile = jobResultDirectory.toFile();
+        File zipFile = Files.createTempFile("processed-", ".zip").toFile(); // Create a temporary file for the zip
 
-        File targetZipFile = new File("outputs/" + targetZipFilename);
-        FileOutputStream fos = new FileOutputStream(targetZipFile);
-        try (ZipOutputStream zos = new ZipOutputStream(fos)) {
+        try (FileOutputStream fos = new FileOutputStream(zipFile);
+                ZipOutputStream zos = new ZipOutputStream(fos)) {
+
             File[] targetFiles = targetFile.listFiles();
             assert targetFiles != null;
 
             for (File f : targetFiles) {
                 ZipEntry zipEntry = new ZipEntry(f.getName());
                 zos.putNextEntry(zipEntry);
-                FileInputStream fis = new FileInputStream(f);
-                byte[] buffer = new byte[1024];
-                int len;
-                while ((len = fis.read(buffer)) > 0) {
-                    zos.write(buffer, 0, len);
+                try (FileInputStream fis = new FileInputStream(f)) {
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = fis.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
+                    }
                 }
                 zos.closeEntry();
-                fis.close();
             }
 
-        }catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
         }
 
-        return targetZipFile;
+        return zipFile; // Return the created zip file
     }
 }

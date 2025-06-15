@@ -12,6 +12,7 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.bytedeco.javacv.FrameGrabber.Exception;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.RestForm;
 import org.xml.sax.SAXException;
@@ -19,6 +20,7 @@ import org.xml.sax.SAXException;
 import com.fiap.services.ProcessadorService;
 
 import io.quarkus.logging.Log;
+import io.smallrye.common.annotation.Blocking;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -35,31 +37,42 @@ public class ProcessadorResource {
     @Inject
     ProcessadorService processadorService;
 
-    public static class VideoUploadForm {
-        @RestForm("files")
-        @PartType(MediaType.APPLICATION_OCTET_STREAM)
-        public List<File> files;
+    @Incoming("processador-requests")
+    @Blocking
+    public Response teste(String request) throws Throwable, Exception {
+        Log.info("Received request: " + request);
+        processadorService.processarVideo(request);
+
+        return Response.ok("Processamento finalizado com sucesso!").build();
     }
 
-    @GET
-    public Response testDownload() throws IOException, Exception {
-        File generatedFile = this.processadorService.processarVideo();
+    // public static class VideoUploadForm {
+    // @RestForm("files")
+    // @PartType(MediaType.APPLICATION_OCTET_STREAM)
+    // public List<File> files;
+    // }
 
-        return Response
-            .ok(Files.readAllBytes(generatedFile.toPath()))
-            .header("Content-Disposition", String.format("attachment; filename=\"%s\"", generatedFile.getName()))
-            .build();
-    }
+    // @GET
+    // public Response testDownload() throws IOException, Exception {
+    // File generatedFile = this.processadorService.processarVideo();
 
-    @POST
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    public Response uploadVideos(VideoUploadForm form) throws IOException, SAXException, TikaException, Exception {
-        File generatedFile = this.processadorService.processarVideo();
+    // return Response
+    // .ok(Files.readAllBytes(generatedFile.toPath()))
+    // .header("Content-Disposition", String.format("attachment; filename=\"%s\"",
+    // generatedFile.getName()))
+    // .build();
+    // }
 
-        return Response
-            .ok(Files.readAllBytes(generatedFile.toPath()))
-            .header("Content-Disposition", "attachment; filename=\"example.zip\"")
-            .build();
-    }
+    // @POST
+    // @Consumes(MediaType.MULTIPART_FORM_DATA)
+    // @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    // public Response uploadVideos(VideoUploadForm form) throws IOException,
+    // SAXException, TikaException, Exception {
+    // File generatedFile = this.processadorService.processarVideo();
+
+    // return Response
+    // .ok(Files.readAllBytes(generatedFile.toPath()))
+    // .header("Content-Disposition", "attachment; filename=\"example.zip\"")
+    // .build();
+    // }
 }
