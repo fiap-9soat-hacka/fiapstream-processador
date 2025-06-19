@@ -39,45 +39,16 @@ public class ProcessadorResource {
     ProcessadorService processadorService;
 
     @Incoming("processador-requests")
-    public Response teste(String message) throws Throwable, Exception {
-        // Log.info("Received request: " + message);
-        // processadorService.processarVideo(message);
-        throw new Exception("Erro ao processar o vídeo");
-        // return Response.ok("Processamento finalizado com sucesso!").build();
+    public Response uploadVideos(String message) throws Throwable, Exception {
+        Log.info("Received request: " + message);
+        processadorService.processarVideo(message);
+        // throw new Exception("Erro ao processar o vídeo");
+        return Response.ok("Processamento finalizado com sucesso!").build();
     }
-
-    // public static class VideoUploadForm {
-    // @RestForm("files")
-    // @PartType(MediaType.APPLICATION_OCTET_STREAM)
-    // public List<File> files;
-    // }
-
-    // @GET
-    // public Response testDownload() throws IOException, Exception {
-    // File generatedFile = this.processadorService.processarVideo();
-
-    // return Response
-    // .ok(Files.readAllBytes(generatedFile.toPath()))
-    // .header("Content-Disposition", String.format("attachment; filename=\"%s\"",
-    // generatedFile.getName()))
-    // .build();
-    // }
-
-    // @POST
-    // @Consumes(MediaType.MULTIPART_FORM_DATA)
-    // @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    // public Response uploadVideos(VideoUploadForm form) throws IOException,
-    // SAXException, TikaException, Exception {
-    // File generatedFile = this.processadorService.processarVideo();
-
-    // return Response
-    // .ok(Files.readAllBytes(generatedFile.toPath()))
-    // .header("Content-Disposition", "attachment; filename=\"example.zip\"")
-    // .build();
-    // }
 
     @Incoming("processador-requests.dlq")
     public Response processarDLX1(String message) throws InterruptedException {
+        Log.info("===================2");
         return Response.ok().build();
     }
 }
