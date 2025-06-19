@@ -21,6 +21,7 @@ import com.fiap.services.ProcessadorService;
 
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
+import io.vertx.mutiny.core.eventbus.Message;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -38,12 +39,11 @@ public class ProcessadorResource {
     ProcessadorService processadorService;
 
     @Incoming("processador-requests")
-    @Blocking
-    public Response teste(String request) throws Throwable, Exception {
-        Log.info("Received request: " + request);
-        processadorService.processarVideo(request);
-
-        return Response.ok("Processamento finalizado com sucesso!").build();
+    public Response teste(String message) throws Throwable, Exception {
+        // Log.info("Received request: " + message);
+        // processadorService.processarVideo(message);
+        throw new Exception("Erro ao processar o vídeo");
+        // return Response.ok("Processamento finalizado com sucesso!").build();
     }
 
     // public static class VideoUploadForm {
@@ -75,4 +75,9 @@ public class ProcessadorResource {
     // .header("Content-Disposition", "attachment; filename=\"example.zip\"")
     // .build();
     // }
+
+    @Incoming("processador-requests.dlq")
+    public Response processarDLX1(String message) throws InterruptedException {
+        return Response.ok().build();
+    }
 }
