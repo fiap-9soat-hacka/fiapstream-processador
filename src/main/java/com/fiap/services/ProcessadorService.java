@@ -27,7 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiap.dto.ResponseData;
 import com.fiap.dto.VideoDataUUID;
 import com.fiap.enums.EstadoProcessamento;
-import com.fiap.rest.CommonResource;
+import com.fiap.integration.s3.CommonResource;
 import com.fiap.utils.MimeUtils;
 
 import io.quarkus.logging.Log;
@@ -104,8 +104,8 @@ public class ProcessadorService {
                 commonResource.buildPutRequest(videoData.uuid() + ".zip", "application/zip"),
                 RequestBody.fromFile(zipData));
         if (putResponse == null) {
-            responseData.setEstado(EstadoProcessamento.ERRO);
-            sendResponse(responseData);
+            // responseData.setEstado(EstadoProcessamento.ERRO);
+            // sendResponse(responseData);
             throw new WebApplicationException("Failed to upload file to S3");
         }
 

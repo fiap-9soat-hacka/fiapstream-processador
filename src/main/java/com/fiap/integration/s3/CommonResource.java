@@ -1,4 +1,4 @@
-package com.fiap.rest;
+package com.fiap.integration.s3;
 
 import java.io.File;
 
