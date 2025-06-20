@@ -21,6 +21,7 @@ import com.fiap.services.ProcessadorService;
 
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.vertx.mutiny.core.eventbus.Message;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -39,6 +40,7 @@ public class ProcessadorResource {
     ProcessadorService processadorService;
 
     @Incoming("processador-requests")
+    @RunOnVirtualThread
     public Response uploadVideos(String message) throws Throwable, Exception {
         Log.info("Received request: " + message);
         processadorService.processarVideo(message);
