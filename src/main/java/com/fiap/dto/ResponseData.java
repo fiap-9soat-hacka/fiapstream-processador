@@ -12,7 +12,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ResponseData {
-    String key;
     String filename;
     EstadoProcessamento estado;
 }

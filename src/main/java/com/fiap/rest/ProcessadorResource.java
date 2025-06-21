@@ -17,6 +17,7 @@ import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.RestForm;
 import org.xml.sax.SAXException;
 
+import com.fiap.dto.ResponseData;
 import com.fiap.services.ProcessadorService;
 
 import io.quarkus.logging.Log;
@@ -52,5 +53,12 @@ public class ProcessadorResource {
     public Response processarDLX1(String message) throws InterruptedException {
         Log.info("===================2");
         return Response.ok().build();
+    }
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response webhook(ResponseData responseData) {
+        Log.info("Received response data: " + responseData);
+        return Response.ok("Webhook Enviado com sucesso").build();
     }
 }

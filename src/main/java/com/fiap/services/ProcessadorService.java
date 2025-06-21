@@ -24,7 +24,7 @@ import org.eclipse.microprofile.reactive.messaging.Emitter;
 import org.eclipse.microprofile.reactive.messaging.Outgoing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fiap.dto.ResponseData;
+import com.fiap.dto.MessageResponseData;
 import com.fiap.dto.VideoDataUUID;
 import com.fiap.enums.EstadoProcessamento;
 import com.fiap.integration.s3.CommonResource;
@@ -88,9 +88,9 @@ public class ProcessadorService {
         Files.write(tempFile, objectBytes, StandardOpenOption.WRITE);
 
         // Vídeo em processamento
-        ResponseData responseData = new ResponseData(
-                videoData.uuid(),
+        MessageResponseData responseData = new MessageResponseData(
                 videoData.filename(),
+                videoData.uuid(),
                 EstadoProcessamento.PROCESSANDO);
         sendResponse(responseData);
 
@@ -163,7 +163,7 @@ public class ProcessadorService {
         return tmpdir;
     }
 
-    private void sendResponse(ResponseData responseData) {
+    private void sendResponse(MessageResponseData responseData) {
         ObjectMapper objectMapper = new ObjectMapper();
         String responseJson;
         try {
