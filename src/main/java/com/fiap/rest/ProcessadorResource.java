@@ -58,7 +58,8 @@ public class ProcessadorResource {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     public Response webhook(ResponseData responseData) {
-        Log.info("Received response data: " + responseData);
+        Log.info("============================================");
+        Log.info("Received response data: " + responseData.getEstado());
         return Response.ok("Webhook Enviado com sucesso").build();
     }
 }
