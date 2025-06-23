@@ -12,6 +12,7 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.bytedeco.javacv.FrameGrabber.Exception;
+import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.RestForm;
@@ -44,14 +45,15 @@ public class ProcessadorResource {
     @RunOnVirtualThread
     public Response uploadVideos(String message) throws Throwable, Exception {
         Log.info("Received request: " + message);
-        processadorService.processarVideo(message);
         // throw new Exception("Erro ao processar o vídeo");
+        processadorService.processarVideo(message);
         return Response.ok("Processamento finalizado com sucesso!").build();
     }
 
     @Incoming("processador-requests.dlq")
+    @Retry(maxRetries = 3)
     public Response processarDLX1(String message) throws InterruptedException {
-        Log.info("===================2");
+        Log.info("Retrying message from DLQ: " + message);
         return Response.ok().build();
     }
 
