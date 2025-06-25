@@ -29,6 +29,7 @@ import com.fiap.dto.VideoDataUUID;
 import com.fiap.enums.EstadoProcessamento;
 import com.fiap.integration.s3.CommonResource;
 import com.fiap.utils.MimeUtils;
+import com.fiap.utils.StringUtils;
 
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
@@ -54,6 +55,9 @@ public class ProcessadorService {
     @Inject
     CommonResource commonResource;
 
+    @Inject
+    StringUtils stringUtils;
+
     @Channel("processador-responses")
     Emitter<String> responseEmitter;
 
@@ -74,10 +78,9 @@ public class ProcessadorService {
      * @throws Exception
      */
 
-    public void processarVideo(String request) throws IOException, Exception {
+    public void processarVideo(String request) throws IOException {
         // Pegando arquivo salvo no s3
-        ObjectMapper objectMapper = new ObjectMapper();
-        VideoDataUUID videoData = objectMapper.readValue(request, VideoDataUUID.class);
+        VideoDataUUID videoData = stringUtils.convert(request, VideoDataUUID.class);
         byte[] objectBytes = s3Client.getObjectAsBytes(commonResource.buildGetRequest(videoData.uuid()))
                 .asByteArray();
 
@@ -104,8 +107,6 @@ public class ProcessadorService {
                 commonResource.buildPutRequest(videoData.uuid() + ".zip", "application/zip"),
                 RequestBody.fromFile(zipData));
         if (putResponse == null) {
-            // responseData.setEstado(EstadoProcessamento.ERRO);
-            // sendResponse(responseData);
             throw new WebApplicationException("Failed to upload file to S3");
         }
 

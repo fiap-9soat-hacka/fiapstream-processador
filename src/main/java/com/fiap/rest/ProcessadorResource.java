@@ -1,37 +1,21 @@
 package com.fiap.rest;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.util.List;
-
-import jakarta.ws.rs.core.Response;
-import org.apache.tika.exception.TikaException;
-import org.apache.tika.metadata.Metadata;
-import org.apache.tika.parser.AutoDetectParser;
-import org.apache.tika.sax.BodyContentHandler;
 import org.bytedeco.javacv.FrameGrabber.Exception;
-import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
-import org.jboss.resteasy.reactive.PartType;
-import org.jboss.resteasy.reactive.RestForm;
-import org.xml.sax.SAXException;
 
 import com.fiap.dto.ResponseData;
+import com.fiap.services.DeadLetterQueueService;
 import com.fiap.services.ProcessadorService;
 
 import io.quarkus.logging.Log;
-import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import io.vertx.mutiny.core.eventbus.Message;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 @Path("/processador")
 @Consumes(MediaType.MULTIPART_FORM_DATA)
@@ -40,6 +24,9 @@ public class ProcessadorResource {
 
     @Inject
     ProcessadorService processadorService;
+
+    @Inject
+    DeadLetterQueueService deadLetterQueueService;
 
     @Incoming("processador-requests")
     @RunOnVirtualThread
@@ -51,9 +38,9 @@ public class ProcessadorResource {
     }
 
     @Incoming("processador-requests.dlq")
-    @Retry(maxRetries = 3)
-    public Response processarDLX1(String message) throws InterruptedException {
+    public Response processarDLX1(String message) throws java.lang.Exception {
         Log.info("Retrying message from DLQ: " + message);
+        deadLetterQueueService.retentativaProcessamento(message);
         return Response.ok().build();
     }
 
