@@ -43,12 +43,4 @@ public class ProcessadorResource {
         deadLetterQueueService.retentativaProcessamento(message);
         return Response.ok().build();
     }
-
-    @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response webhook(ResponseData responseData) {
-        Log.info("============================================");
-        Log.info("Received response data: " + responseData.getEstado());
-        return Response.ok("Webhook Enviado com sucesso").build();
-    }
 }
