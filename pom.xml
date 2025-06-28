@@ -17,6 +17,11 @@
         <quarkus.platform.version>3.23.2</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.3</surefire-plugin.version>
+        <jacoco.version>0.8.11</jacoco.version>
+        <sonar.organization>fiap-9soat-4</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.exclusions>src/test/**</sonar.exclusions>
+        <sonar.test.exclusions>src/test/**</sonar.test.exclusions>
     </properties>
 
     <dependencyManagement>
@@ -113,8 +118,47 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-security-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-jwt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-jwt-build</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit5-mockito</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <version>1.10.19</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jacoco</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.smallrye.reactive</groupId>
+            <artifactId>smallrye-reactive-messaging-in-memory</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>4.3.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -143,6 +187,40 @@
                 <configuration>
                     <parameters>true</parameters>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/target/**</exclude>
+                    </excludes>
+                </configuration>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>default-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <excClassLoaders>*QuarkusClassLoader</excClassLoaders>
+                            <destFile>${project.build.directory}/jacoco-quarkus-exec</destFile>
+                            <append>true</append>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-prepare-agent-integration</id>
+                        <goals>
+                            <goal>prepare-agent-integration</goal>
+                        </goals>
+                        <configuration>
+                            <excClassLoaders>*QuarkusClassLoader</excClassLoaders>
+                            <destFile>${project.build.directory}/jacoco-quarkus-exec</destFile>
+                            <append>true</append>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>

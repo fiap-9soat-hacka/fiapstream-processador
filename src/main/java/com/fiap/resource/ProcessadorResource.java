@@ -1,4 +1,4 @@
-package com.fiap.rest;
+package com.fiap.resource;
 
 import org.bytedeco.javacv.FrameGrabber.Exception;
 import org.eclipse.microprofile.reactive.messaging.Incoming;

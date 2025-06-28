@@ -1,4 +1,4 @@
-package com.fiap.rest;
+package com.fiap.resource;
 
 import com.fiap.dto.ResponseData;
 
