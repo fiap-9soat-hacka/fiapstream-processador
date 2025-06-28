@@ -99,7 +99,7 @@ public class ProcessadorService {
 
         Path tmpdir = processarVideoEmImagens(tempFile);
 
-        Log.info("Processamento finalizado para: " + tempFile.getFileName());
+        Log.info("Processamento finalizado para: " + videoData.filename());
 
         // Zipando arquivos e enviando para o S3
         File zipData = criarArquivoZipado(tmpdir);
