@@ -32,7 +32,7 @@ public class DeadLetterQueueService {
 
     @Retry(maxRetries = 3)
     @Fallback(fallbackMethod = "metodoFallback", applyOn = Exception.class)
-    public void retentativaProcessamento(String message) throws IOException, Exception {
+    public void retentativaProcessamento(String message) throws IOException {
         Log.info("Trying to reprocess the DLQ message");
         processadorService.processarVideo(message);
         // throw new Exception("Erro ao processar o vídeo");

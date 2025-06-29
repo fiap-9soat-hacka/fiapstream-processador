@@ -38,7 +38,7 @@ public class ProcessadorResource {
     }
 
     @Incoming("processador-requests.dlq")
-    public Response processarDLX1(String message) throws java.lang.Exception {
+    public Response processarDLQ(String message) throws java.lang.Exception {
         Log.info("Retrying message from DLQ: " + message);
         deadLetterQueueService.retentativaProcessamento(message);
         return Response.ok().build();

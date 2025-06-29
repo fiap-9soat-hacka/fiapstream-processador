@@ -61,23 +61,6 @@ public class ProcessadorService {
     @Channel("processador-responses")
     Emitter<String> responseEmitter;
 
-    // public static void main(String[] args) {
-    // try {
-    // new ProcessadorService().processarVideo();
-    // } catch (Exception | IOException e) {
-    // throw new RuntimeException(e);
-    // }
-    // }
-
-    /**
-     * TODO: Fazer processamento com arquivo recebido do resource
-     * TODO: Mover esse código para sistema de filas
-     *
-     * @return
-     * @throws IOException
-     * @throws Exception
-     */
-
     public void processarVideo(String request) throws IOException {
         // Pegando arquivo salvo no s3
         VideoDataUUID videoData = stringUtils.convert(request, VideoDataUUID.class);
@@ -106,6 +89,7 @@ public class ProcessadorService {
         PutObjectResponse putResponse = s3Client.putObject(
                 commonResource.buildPutRequest(videoData.uuid() + ".zip", "application/zip"),
                 RequestBody.fromFile(zipData));
+
         if (putResponse == null) {
             throw new WebApplicationException("Failed to upload file to S3");
         }
@@ -127,7 +111,6 @@ public class ProcessadorService {
                 .toAbsolutePath();
         String tmpdirPath = tmpdir.toString();
 
-        Log.info("Processando video " + tempFile.getFileName());
         Log.info("Resultado do processamento temporariamente armazenado em " + tmpdir);
 
         FFmpegBuilder builder = new FFmpegBuilder()
