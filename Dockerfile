@@ -6,7 +6,7 @@ COPY pom.xml /app
 WORKDIR /app
 RUN mvn clean install -U -Dmaven.test.skip=true
 
-FROM maven:3.9.10-eclipse-temurin-21-noble
+FROM eclipse-temurin:21-jdk-jammy
 
 RUN apt update && apt install -y ffmpeg
 
