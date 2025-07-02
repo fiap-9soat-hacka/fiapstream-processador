@@ -1,11 +1,22 @@
-FROM eclipse-temurin:21-jdk-jammy
+FROM maven:3.9.8-eclipse-temurin-21 AS build
+
+COPY src /app/src
+COPY pom.xml /app
 
 WORKDIR /app
+RUN mvn clean install -U -Dmaven.test.skip=true
 
-RUN apt update && apt install -y maven ffmpeg
+FROM maven:3.9.10-eclipse-temurin-21-noble
 
-RUN mvn clean install -U
+RUN apt update && apt install -y ffmpeg
 
-COPY /app/target/quarkus/* /deployments/
+COPY src /app/src
+COPY pom.xml /app
 
-ENTRYPOINT ["java", "-jar", "/deployments/quarkus-run.jar"]
+COPY --from=build /app/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=build /app/target/quarkus-app/*.jar /deployments/
+COPY --from=build /app/target/quarkus-app/app/ /deployments/app/
+COPY --from=build /app/target/quarkus-app/quarkus/ /deployments/quarkus/
+COPY --from=build /app/target/quarkus-app/* /deployments/
+
+ENTRYPOINT ["java", "-jar", "/app/quarkus/quarkus-run.jar"]
