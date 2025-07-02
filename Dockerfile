@@ -1,11 +1,8 @@
-FROM eclipse-temurin:21-jdk
-
-COPY src /app/src
-COPY pom.xml /app
+FROM eclipse-temurin:21-jdk-jammy
 
 WORKDIR /app
 
-RUN apt update && apt install -y ffmpeg
+RUN apt update && apt install -y maven ffmpeg
 
 RUN mvn clean install -U
 
