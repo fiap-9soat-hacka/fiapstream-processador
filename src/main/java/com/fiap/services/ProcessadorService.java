@@ -46,10 +46,6 @@ import java.util.zip.ZipOutputStream;
 public class ProcessadorService {
 
     @Inject
-    public ProcessadorService() {
-    }
-
-    @Inject
     S3Client s3Client;
 
     @Inject

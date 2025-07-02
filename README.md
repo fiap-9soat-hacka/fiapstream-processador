@@ -1,3 +1,3 @@
 # fiapstream-processador
 
-Processador de vídeo
+![Coverage](.github/badges/jacoco.svg)
