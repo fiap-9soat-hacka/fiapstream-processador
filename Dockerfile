@@ -19,4 +19,4 @@ COPY --from=build /app/target/quarkus-app/app/ /deployments/app/
 COPY --from=build /app/target/quarkus-app/quarkus/ /deployments/quarkus/
 COPY --from=build /app/target/quarkus-app/* /deployments/
 
-ENTRYPOINT ["java", "-jar", "/app/quarkus/quarkus-run.jar"]
+ENTRYPOINT ["java", "-jar", "/deployments/quarkus-run.jar"]
