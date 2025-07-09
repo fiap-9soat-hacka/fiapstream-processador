@@ -12,6 +12,7 @@ import net.bramp.ffmpeg.job.FFmpegJob;
 import net.bramp.ffmpeg.probe.FFmpegProbeResult;
 import net.bramp.ffmpeg.progress.Progress;
 import net.bramp.ffmpeg.progress.ProgressListener;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
@@ -54,10 +55,22 @@ public class ProcessadorService {
     @Inject
     StringUtils stringUtils;
 
+    @ConfigProperty(name = "quarkus.s3.aws.credentials.static-provider.access-key-id")
+    String acessKey;
+
+    @ConfigProperty(name = "quarkus.s3.aws.credentials.static-provider.secret-access-key")
+    String secretAcessKey;
+
+    @ConfigProperty(name = "quarkus.s3.aws.credentials.static-provider.session-token")
+    String sessionToken;
+
     @Channel("processador-responses")
     Emitter<String> responseEmitter;
 
     public void processarVideo(String request) throws IOException {
+        System.setProperty("aws.accessKeyId", acessKey);
+        System.setProperty("aws.secretAccessKey", secretAcessKey);
+        System.setProperty("aws.sessionToken", sessionToken);
         // Pegando arquivo salvo no s3
         VideoDataUUID videoData = stringUtils.convert(request, VideoDataUUID.class);
         byte[] objectBytes = s3Client.getObjectAsBytes(commonResource.buildGetRequest(videoData.uuid()))
