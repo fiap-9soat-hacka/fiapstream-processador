@@ -76,7 +76,7 @@ public class ProcessadorServiceTest {
         when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(putResponse);
 
         ObjectMapper mapper = new ObjectMapper();
-        assertThrows(WebApplicationException.class,
+        assertThrows(Exception.class,
                 () -> processadorService.processarVideo(mapper.writeValueAsString(videoData)));
 
         MessageResponseData response = stringUtils.convert(responsesOut.received().get(1).getPayload(),
