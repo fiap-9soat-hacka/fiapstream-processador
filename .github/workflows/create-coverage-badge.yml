@@ -12,8 +12,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install FFMPEG
-        run: sudo apt update && apt install -y ffmpeg
+      - name: Set up FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v2
+        with:
+          token: ${{ secrets.GB_TOKEN }}
       ###
       - uses: actions/checkout@v4
 
