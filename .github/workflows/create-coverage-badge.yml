@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set up FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v2
+        with:
+          token: ${{ secrets.GB_TOKEN }}
+      ###
       - uses: actions/checkout@v4
 
       - name: Set up JDK 21
