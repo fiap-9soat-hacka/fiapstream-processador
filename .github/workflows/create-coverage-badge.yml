@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install FFMPEG
+        run: sudo apt update && apt install -y ffmpeg
+      ###
       - uses: actions/checkout@v4
 
       - name: Set up JDK 21
